@@ -1,0 +1,506 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import RakedGarden from '../components/RakedGarden.astro';
+import ryoanji from '../assets/ryoanji.jpg';
+import {
+  person, contact, links, experience, recognition, education, credentials, lab, testimonial,
+} from '../data/profile';
+
+const nav = [
+  { href: '#about', label: 'About' },
+  { href: '#experience', label: 'Experience' },
+  { href: '#lab', label: 'Lab' },
+  { href: '#contact', label: 'Contact' },
+];
+// Within each company, the first role with project highlights shows them open;
+// later roles tuck theirs behind a toggle.
+const firstHighlighted = (roles: { highlights?: unknown[] }[]) => roles.findIndex((r) => r.highlights?.length);
+---
+
+<Base
+  title={`${person.name} — ${person.title}`}
+  description={`${person.name} is a ${person.title.toLowerCase()} in ${person.location} with 20+ years designing and building software, from .NET back ends to AWS and Azure platforms.`}
+>
+  <header class="hero">
+    <RakedGarden layout="wide" />
+    <RakedGarden layout="tall" />
+    <nav class="wrap nav" aria-label="Primary">
+      <a class="mark" href="#top" aria-label="Stephen Ripple, home">SR</a>
+      <ul>
+        {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+      </ul>
+    </nav>
+    <div class="wrap hero-body" id="top">
+      <h1>{person.name}</h1>
+      <p class="role">{person.title}, {person.company}</p>
+      <p class="tagline">{person.tagline}</p>
+      <p class="hero-links">
+        <a href="#experience">See my experience</a>
+        <a href="#contact">Get in touch</a>
+      </p>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="section" id="about">
+      <div class="wrap about">
+        <h2>About</h2>
+        <div class="about-text">
+          {person.summary.map((p) => <p>{p}</p>)}
+        </div>
+        <div class="focus">
+          <h3>What I work on</h3>
+          <ul>{person.focus.map((f) => <li>{f}</li>)}</ul>
+          <h3>Based in</h3>
+          <p>{person.location}</p>
+        </div>
+      </div>
+    </section>
+
+    <figure class="band">
+      <Image
+        src={ryoanji}
+        alt="The raked gravel garden at Ryōan-ji, with moss-ringed stones in front of an earthen wall"
+        widths={[800, 1400, 2200]}
+        sizes="100vw"
+        quality={72}
+      />
+      <figcaption class="wrap">Ryōan-ji, Kyoto</figcaption>
+    </figure>
+
+    <section class="section" id="experience">
+      <div class="wrap">
+        <h2>Experience</h2>
+        <ol class="timeline">
+          {experience.map((job) => (
+            <li class="job">
+              <div class="job-head">
+                <h3 class="company">{job.company}</h3>
+                <p class="meta">
+                  {job.dates}
+                  {job.location && <><br />{job.location}</>}
+                  {job.note && <><br />{job.note}</>}
+                </p>
+              </div>
+              <ol class="roles">
+                {job.roles.map((role, i) => (
+                  <li class="role-item">
+                    <h4>
+                      {role.title} <span class="dates">{role.dates}</span>
+                    </h4>
+                    {role.summary && <p>{role.summary}</p>}
+                    {role.highlights && (
+                      i === firstHighlighted(job.roles) ? (
+                        <dl class="highlights">
+                          {role.highlights.map((h) => (<><dt>{h.name}</dt><dd>{h.text}</dd></>))}
+                        </dl>
+                      ) : (
+                        <details>
+                          <summary>Show project highlights ({role.highlights.length})</summary>
+                          <dl class="highlights">
+                            {role.highlights.map((h) => (<><dt>{h.name}</dt><dd>{h.text}</dd></>))}
+                          </dl>
+                        </details>
+                      )
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </li>
+          ))}
+        </ol>
+
+        <div class="extras">
+          <div>
+            <h3>Recognition</h3>
+            <ul class="plain">
+              {recognition.map((r) => <li><strong>{r.year}</strong> {r.text}</li>)}
+            </ul>
+          </div>
+          <blockquote class="quote">
+            <p>{testimonial.quote}</p>
+            <footer>{testimonial.author}, {testimonial.source}</footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="lab">
+      <div class="wrap">
+        <h2>Lab</h2>
+        <p class="lede">What I build when nobody’s asking.</p>
+        <ul class="lab">
+          {lab.map((p) => (
+            <li>
+              <h3>{p.name}</h3>
+              <p>{p.text}</p>
+              <p class="tags">{p.tags.join(', ')}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="credentials">
+      <div class="wrap creds">
+        <h2>Education &amp; credentials</h2>
+        <div>
+          <h3>Education</h3>
+          <ul class="plain">
+            {education.map((e) => (
+              <li><strong>{e.degree}</strong><br />{e.school}, {e.years}{e.note && ` (${e.note})`}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3>Certifications</h3>
+          <ul class="plain">
+            {credentials.map((c) => (
+              <li><strong>{c.name}</strong><br />{c.issuer}, earned {c.year}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact">
+      <div class="wrap contact">
+        <h2>Contact</h2>
+        <p class="lede">The best way to reach me is email. I’m happy to talk architecture, cloud, or leading teams.</p>
+        <ul class="contact-list">
+          <li>
+            <span>Email</span>
+            <a class="reveal" data-kind="email" data-v={contact.email} href="#contact">Show email address</a>
+          </li>
+          <li>
+            <span>Phone</span>
+            <a class="reveal" data-kind="tel" data-v={contact.phone} data-label={contact.phoneDisplay} href="#contact">Show phone number</a>
+          </li>
+          {links.map((l) => (
+            <li><span>{l.label}</span><a href={l.href} rel="me noopener">{l.href.replace(/^https:\/\/(www\.)?/, '').replace(/\/$/, '')}</a></li>
+          ))}
+        </ul>
+        <noscript><p>Turn on JavaScript to see my email address, or message me on LinkedIn.</p></noscript>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>© {new Date().getFullYear()} {person.name}</p>
+    </div>
+  </footer>
+</Base>
+
+<script>
+  // Assemble contact details in the browser so they aren't plain text in the HTML.
+  const decode = (v: string) => [...atob(v)].reverse().join('');
+  document.querySelectorAll<HTMLAnchorElement>('a.reveal').forEach((a) => {
+    const value = decode(a.dataset.v!);
+    const label = a.dataset.label ? decode(a.dataset.label) : value;
+    a.href = (a.dataset.kind === 'email' ? 'mailto:' : 'tel:') + value;
+    a.textContent = label;
+  });
+</script>
+
+<style>
+  /* Hero */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--gravel);
+    min-height: min(92vh, 820px);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    --stone: #3d4146;
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero { --stone: #0f1113; }
+  }
+  .nav {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1.25rem;
+  }
+  .nav ul {
+    display: flex;
+    gap: clamp(1rem, 3vw, 2rem);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.95rem;
+  }
+  .nav a { text-decoration: none; }
+  .nav a:hover { text-decoration: underline; }
+  .mark {
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+  .hero-body {
+    position: relative;
+    align-self: center;
+    padding-block: 3rem 5rem;
+  }
+  .hero-body > * {
+    max-width: 34rem;
+  }
+  h1 {
+    font-size: clamp(3.2rem, 9vw, 6.75rem);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+    font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 144;
+    margin-bottom: 1.25rem;
+    /* gravel-coloured halo keeps the name legible over the rake lines */
+    text-shadow: 0 0 18px var(--gravel), 0 0 6px var(--gravel);
+  }
+  .role {
+    font-size: 1.15rem;
+    line-height: 1.35;
+    font-weight: 500;
+    color: var(--moss);
+    margin-bottom: 0.5rem;
+  }
+  .tagline {
+    font-size: clamp(1.15rem, 2vw, 1.35rem);
+    line-height: 1.5;
+  }
+  .role,
+  .tagline {
+    text-shadow: 0 0 10px var(--gravel), 0 0 4px var(--gravel), 0 0 2px var(--gravel);
+  }
+  .hero-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    margin-top: 2rem;
+    font-weight: 500;
+  }
+  .hero-links a:first-child {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.7rem 1.15rem;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .hero-links a:first-child:hover { background: var(--moss); }
+  .hero-links a:last-child { padding-block: 0.7rem; }
+
+  /* About */
+  .about {
+    display: grid;
+    gap: 2rem 4rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 900px) {
+    .about { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+    .about h2 { grid-column: 1 / -1; }
+  }
+  .about-text p:first-child { font-size: 1.2rem; line-height: 1.6; }
+  .focus h3 { margin-bottom: 0.75rem; }
+  .focus h3:not(:first-child) { margin-top: 2rem; }
+  .focus ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .focus li {
+    padding-block: 0.55rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* Photo band */
+  .band {
+    margin: 0;
+    position: relative;
+  }
+  .band img {
+    display: block;
+    width: 100%;
+    height: clamp(260px, 42vw, 520px);
+    object-fit: cover;
+    object-position: center 78%;
+  }
+  .band figcaption {
+    font-size: 0.85rem;
+    color: var(--muted);
+    padding-block: 0.6rem;
+  }
+
+  /* Experience timeline */
+  .timeline,
+  .roles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .job {
+    display: grid;
+    gap: 0.5rem 3rem;
+    padding-block: 2.25rem;
+    border-top: 1px solid var(--rule);
+  }
+  .job:first-child { border-top: 0; padding-top: 0; }
+  @media (min-width: 820px) {
+    .job { grid-template-columns: 15rem minmax(0, 1fr); }
+    .job-head { position: sticky; top: 1.5rem; align-self: start; }
+  }
+  .company {
+    font-family: var(--serif);
+    font-size: 1.45rem;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-top: 0.35rem;
+  }
+  .roles {
+    border-left: 2px solid var(--rule);
+    padding-left: 1.5rem;
+  }
+  .role-item {
+    position: relative;
+    padding-bottom: 1.75rem;
+  }
+  .role-item:last-child { padding-bottom: 0; }
+  .role-item::before {
+    content: '';
+    position: absolute;
+    left: calc(-1.5rem - 6px);
+    top: 0.55rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--moss);
+  }
+  .role-item:first-child::before { background: var(--moss); }
+  h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.4rem;
+  }
+  .dates {
+    font-weight: 400;
+    color: var(--muted);
+    margin-left: 0.5rem;
+  }
+  .highlights {
+    margin: 0.75rem 0 0;
+    max-width: var(--measure);
+  }
+  .highlights dt { font-weight: 600; margin-top: 0.85rem; }
+  .highlights dd { margin: 0.15rem 0 0; color: var(--muted); }
+  details summary {
+    cursor: pointer;
+    color: var(--moss);
+    font-weight: 500;
+    width: fit-content;
+  }
+  details summary:hover { color: var(--ochre); }
+  details[open] summary { margin-bottom: 0.25rem; }
+
+  .extras {
+    display: grid;
+    gap: 2.5rem 4rem;
+    margin-top: 3.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--rule);
+  }
+  @media (min-width: 820px) {
+    .extras { grid-template-columns: 1fr 1fr; }
+  }
+  .extras h3 { margin-bottom: 1rem; }
+  .plain {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .plain li + li { margin-top: 1rem; }
+  .plain strong { font-weight: 600; }
+  .quote {
+    margin: 0;
+    padding-left: 1.5rem;
+    border-left: 3px solid var(--moss);
+  }
+  .quote p {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    line-height: 1.5;
+    font-variation-settings: 'opsz' 36;
+  }
+  .quote footer { color: var(--muted); font-size: 0.95rem; }
+
+  /* Lab */
+  .lede {
+    font-size: 1.15rem;
+    color: var(--muted);
+    margin-top: -1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .lab {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0 3rem;
+  }
+  @media (min-width: 760px) {
+    .lab { grid-template-columns: 1fr 1fr; }
+  }
+  .lab li {
+    padding-block: 1.25rem;
+    border-top: 1px solid var(--rule);
+  }
+  .lab h3 { margin-bottom: 0.35rem; }
+  .lab p { margin-bottom: 0.35rem; }
+  .tags { color: var(--moss); font-size: 0.9rem; }
+
+  /* Credentials */
+  .creds {
+    display: grid;
+    gap: 2rem 4rem;
+  }
+  @media (min-width: 820px) {
+    .creds { grid-template-columns: 1fr 1fr; }
+    .creds h2 { grid-column: 1 / -1; }
+  }
+  .creds h3 { margin-bottom: 1rem; }
+
+  /* Contact */
+  .contact-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 40rem;
+  }
+  .contact-list li {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 1rem;
+    padding-block: 0.85rem;
+    border-top: 1px solid var(--rule);
+  }
+  .contact-list span { color: var(--muted); }
+  .contact-list a { overflow-wrap: anywhere; }
+
+  .site-footer {
+    border-top: 1px solid var(--rule);
+    padding-block: 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .site-footer p { margin: 0; }
+
+  @media (max-width: 640px) {
+    .nav ul { gap: 0.9rem; font-size: 0.9rem; }
+    .hero { min-height: 860px; }
+    .hero-body { align-self: start; padding-top: 4rem; }
+  }
+</style>
