@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Lets GitHub Actions in stephenripple/stephenrippleweb deploy the site to S3 and
+  clear the CloudFront cache, using short-lived OIDC credentials (no stored AWS keys).
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: www.stephenripple.com
+    Description: S3 bucket the site is served from.
+  DistributionId:
+    Type: String
+    Description: CloudFront distribution ID in front of the bucket (e.g. E1ABCDEF234567).
+    AllowedPattern: '^E[A-Z0-9]+$'
+  GitHubRepo:
+    Type: String
+    Default: stephenripple/stephenrippleweb
+    Description: owner/repo allowed to assume the role.
+  GitHubEnvironment:
+    Type: String
+    Default: production
+    Description: GitHub environment the deploy job runs in. Only jobs in this environment can assume the role.
+  CreateOIDCProvider:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >
+      Set to false if this AWS account already has an IAM identity provider for
+      token.actions.githubusercontent.com (IAM > Identity providers).
+
+Conditions:
+  MakeProvider: !Equals [!Ref CreateOIDCProvider, 'true']
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: MakeProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: stephenripple-site-deploy
+      Description: Assumed by GitHub Actions to deploy stephenripple.com
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - MakeProvider
+                - !Ref GitHubOIDCProvider
+                - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepo}:environment:${GitHubEnvironment}
+      Policies:
+        - PolicyName: deploy-site
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ListBucket
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub arn:aws:s3:::${BucketName}
+              - Sid: WriteObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub arn:aws:s3:::${BucketName}/*
+              - Sid: ClearCache
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${DistributionId}
+
+Outputs:
+  RoleArn:
+    Description: Put this in the GitHub variable AWS_ROLE_ARN.
+    Value: !GetAtt DeployRole.Arn
