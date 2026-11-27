@@ -53,13 +53,9 @@ export const experience: Job[] = [
     roles: [
       {
         title: 'Solutions Architect',
-        dates: 'Current',
+        dates: '2022 — Present',
         summary:
           'Design solution frameworks for specific business problems, provide technical leadership and guidance through delivery, and keep business and IT strategy aligned.',
-      },
-      {
-        title: 'Delivery Architect',
-        dates: '2022',
       },
       {
         title: 'Technical Lead',
@@ -210,11 +206,6 @@ export const credentials = [
 
 // DRAFT: placeholders built from interests Stephen has mentioned — replace with real projects.
 export const lab = [
-  {
-    name: 'This website',
-    text: 'Rebuilt with Astro and deployed from GitHub Actions to S3 and CloudFront using short-lived OIDC credentials — no stored AWS keys.',
-    tags: ['Astro', 'AWS', 'CI/CD'],
-  },
   {
     name: 'Smart home',
     text: 'Home automation and IoT projects around the house.',
