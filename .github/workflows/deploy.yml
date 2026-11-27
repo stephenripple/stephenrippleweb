@@ -1,0 +1,95 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'archive/**'
+      - '**/*.md'
+      - 'infra/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Show what would change in S3 without uploading or deleting anything
+        type: boolean
+        default: true
+
+# Never run two deploys at once; a newer push waits for the current one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # Manual runs always go. Pushes to master deploy only once the repository
+    # variable DEPLOY_ON_PUSH is set to true (after the first manual deploy checks out).
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_PUSH == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # lets the job request a short-lived AWS credential via OIDC
+    env:
+      AWS_REGION: us-east-1
+      BUCKET: ${{ vars.S3_BUCKET }}
+      DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      DRYRUN: ${{ inputs.dry_run == true && '--dryrun' || '' }}
+    steps:
+      - name: Check configuration
+        run: |
+          for v in AWS_ROLE_ARN S3_BUCKET CLOUDFRONT_DISTRIBUTION_ID; do
+            [ -n "${!v}" ] || { echo "::error::Repository variable $v is not set"; exit 1; }
+          done
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Get AWS credentials
+        uses: aws-actions/configure-aws-credentials@45666896f5d8e0f10ae255413f3a4cdd03bdc8f5 # v6.3.1
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: site-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Hashed files in /assets never change, so browsers can cache them for a year.
+      - name: Upload assets
+        run: >
+          aws s3 sync dist/assets "s3://$BUCKET/assets" $DRYRUN
+          --cache-control "public, max-age=31536000, immutable"
+
+      # Pages and other files are re-checked every 5 minutes. --delete removes
+      # files that are no longer part of the site (e.g. the old css/, js/, images/).
+      - name: Upload pages
+        run: >
+          aws s3 sync dist "s3://$BUCKET" $DRYRUN --delete
+          --exclude "assets/*"
+          --cache-control "public, max-age=300"
+
+      # Remove old hashed assets only after the new pages that reference them are live.
+      - name: Prune old assets
+        run: aws s3 sync dist/assets "s3://$BUCKET/assets" $DRYRUN --delete
+
+      - name: Clear CloudFront cache
+        if: ${{ env.DRYRUN == '' }}
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+                 --paths "/*" --query Invalidation.Id --output text)
+          echo "Invalidation $id started"
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+          echo "Cache cleared: https://www.stephenripple.com" >> "$GITHUB_STEP_SUMMARY"
